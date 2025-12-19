@@ -1,11 +1,11 @@
 package org;
-
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.ArrayList;
 import java.util.Random;
 
 import javax.swing.JFrame;
@@ -21,11 +21,13 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
     //static final int WINDOW_H = WORLD_H * TILE_SIZE;
     //int changeX;
     //int changeY;
+    
 
     int[][] world = new int[WORLD_W][WORLD_H];
+    int playerx = WORLD_W / 2;
+    int playery = 5;
 
-    int px = WORLD_W / 2;
-    int py = 5;
+    ArrayList<Enemy> enemies = new ArrayList<>();
 
     boolean left, right, up, down;
 
@@ -45,7 +47,19 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
             game.requestFocusInWindow();
         });
     }
+     class Enemy
+        {
+            int x,y;
+            int dir =1;
+            int timer=0;
 
+            Enemy (int x, int y)
+            {
+                this.x =x;
+                this.y=y;
+            }
+
+        }
     public MinCraft() 
     {
         setFocusable(true);
@@ -56,7 +70,24 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
 
         thread = new Thread(this);
         thread.start();
+    
+        //class Enemy
+       // {
+         //   int x,y;
+         //   int dir =1;
+          //  int timer=0;
+
+         //   Enemy (int x, int y)
+        //    {
+          //      this.x =x;
+          //      this.y=y;
+         //   }
+
+       // }
+    
     }
+
+
 
     //world
     private void generateWorld() 
@@ -82,12 +113,13 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
         }
 
         // enemies
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 8; i++) {
             int ex = rand.nextInt(WORLD_W);
             int ey = rand.nextInt(WORLD_H);
-            if (world[ex][ey] == 0) {
-                world[ex][ey] = 4;
-            }
+            if (world[ex][ey] == 0) 
+                {
+                enemies.add(new Enemy (ex,ey));
+                }
         }
     }
 
@@ -98,7 +130,8 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
    
 
     @Override
-    protected void paintComponent(Graphics g) {
+    protected void paintComponent(Graphics g) 
+    {
         super.paintComponent(g);
 
         int tsX = getWidth() / WORLD_W;
@@ -110,21 +143,29 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
                     case 0 -> g.setColor(new Color(135, 206, 235)); // sky
                     case 1 -> g.setColor(new Color(155, 118, 83));  // dirt
                     case 2 -> g.setColor(new Color(120, 120, 120)); // stone
-                    case 3 -> g.setColor(new Color(103, 146, 63));  // grass
-                    case 4 -> g.setColor(Color.BLACK);              // enemy
+                    case 3 -> g.setColor(new Color(103, 146, 63));  // grass         
+                //  case 4 -> g.setColor(Color.BLACK); //enemy    
                 }
+        
 
                 g.fillRect(x * tsX, y * tsY, tsX, tsY);
                 g.setColor(new Color(0, 0, 0, 40));
                 g.drawRect(x * tsX, y * tsY, tsX, tsY);
             }
         }
+        g.setColor(Color.BLACK);
 
+        for (Enemy e : enemies) 
+            {
+
+            g.fillRect(e.x * tsX, e.y * tsY, tsX, tsY);
+
+            }
         // PLAYER
         g.setColor(Color.RED);
         g.fillRect(
-                px * tsX + tsX / 6,
-                py * tsY + tsY / 6,
+                playerx * tsX + tsX / 6,
+                playery * tsY + tsY / 6,
                 tsX * 2 / 3,
                 tsY * 2 / 3
         );
@@ -133,25 +174,61 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
 
     private void update() 
     {
-        int nx = px + (right ? 1 : 0) - (left ? 1 : 0);
-        int ny = py + (down ? 1 : 0) - (up ? 1 : 0);
-
-        if (!inBounds(nx, ny)) return;
-
-        if (world[nx][ny] == 0) 
-        {
-            px = nx;
-            py = ny;
-        }
-
-        // enemy collision
-        if (world[nx][ny] == 4) 
-        {
-            world[nx][ny] = 0;
-            px = nx;
-            py = ny;
-        }
+        moveEnemy();
+        movePlayer();
+        checkEnemyCollision();
     }
+        private void movePlayer()
+        {
+            int newx = playerx + (right ? 1 : 0) - (left ? 1 : 0);
+            int newy = playery + (down ? 1 : 0) - (up ? 1 : 0);
+
+            if (!inBounds(newx, newy)) return;
+
+            if (world[newx][newy] == 0) 
+            {
+                playerx = newx;
+                playery = newy;
+            }
+        }
+        /*  enemy collision
+       // if (world[newx][newy] == 4) 
+        //{
+         //   world[newx][newy] = 0;
+          //  playerx = newx;
+           // playery = newy;
+        }*/
+        private void moveEnemy()
+        {
+            for (Enemy e : enemies) 
+            {
+            if (++e.timer < 15) continue;
+            e.timer = 0;
+
+            int nx = e.x + e.dir;
+
+            if (!inBounds(nx, e.y) || world[nx][e.y] != 0) 
+                {
+                e.dir *= -1;
+                }
+
+                else 
+                {
+                e.x = nx;
+                }
+            }
+        }
+        private void checkEnemyCollision() 
+        {
+            for (int i = enemies.size() - 1; i >= 0; i--) 
+                {
+                    Enemy e = enemies.get(i);
+            if (e.x == playerx && e.y == playery) 
+                {
+            enemies.remove(i); // kill enemy
+                }
+                }
+        }
 
     @Override
     public void run() 
@@ -203,10 +280,7 @@ public class MinCraft extends JPanel implements Runnable, KeyListener, MouseList
         int gx = e.getX() / tsX;
         int gy = e.getY() / tsY;
 
-        if (inBounds(gx, gy) && world[gx][gy] == 4) 
-        {
-            world[gx][gy] = 0;
-        }
+        
     }
 
     @Override public void mouseReleased(MouseEvent e) {}
